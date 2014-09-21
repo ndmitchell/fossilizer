@@ -15,7 +15,7 @@ data Vertex = Vertex {x, y, z :: Double} deriving (Eq,Ord)
 type Vector = Vertex
 
 
-data Face = Face {verticies :: [Vertex], vnormal :: Maybe Vector}
+data Face = Face {verticies :: [Vertex], normals :: [Vector]}
 
 data S = S {vs :: Map.Map Vertex Int, vns :: Map.Map Vector Int}
 
@@ -26,12 +26,12 @@ showOBJ = showFaces $ S Map.empty Map.empty
         showFaces s (f:fs) = showFace s f $ \s -> showFaces s fs
 
         showFace s Face{..} k =
-            showVerticies s verticies $ \s ps ->
-            showNormal s vnormal $ \s n ->
-            (unwords $ "f" : [p ++ n | p <- ps]) : k s
+            showList showVertex s verticies $ \s ps ->
+            showList showNormal s normals $ \s ns ->
+            (unwords $ "f" : zipWith (++) ps (ns ++ repeat "")) : k s
 
-        showVerticies s [] k = k s []
-        showVerticies s (p:ps) k = showVertex s p $ \s i -> showVerticies s ps $ \s is -> k s (i:is)
+        showList showOne s [] k = k s []
+        showList showOne s (p:ps) k = showOne s p $ \s i -> showList showOne s ps $ \s is -> k s (i:is)
 
         showVertex s@S{..} v@Vertex{..} k
             | Just i <- Map.lookup v vs = k s $ show i
@@ -39,8 +39,7 @@ showOBJ = showFaces $ S Map.empty Map.empty
                           (unwords ["v",shw x,shw y,shw z]) :
                           k s{vs = Map.insert v i vs} (show i)
 
-        showNormal s Nothing k = k s ""
-        showNormal s@S{..} (Just vn@Vertex{..}) k
+        showNormal s@S{..} vn@Vertex{..} k
             | Just i <- Map.lookup vn vns = k s $ "//" ++ show i
             | otherwise = let i = Map.size vns + 1 in
                           (unwords ["vn",shw x,shw y,shw z]) :

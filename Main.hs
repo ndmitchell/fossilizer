@@ -58,7 +58,7 @@ faces s = flip ffmap s $ \x y _ ->
     (triangle (x,y) (pred x,y) (x,pred y)
     ,triangle (x,y) (succ x,y) (x,succ y))
     where
-        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = Just $ Face [v1, v2, v3] $ Just $ normal v1 v2 v3
+        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = Just $ Face [v1, v2, v3] $ replicate 3 $ normal v1 v2 v3
         triangle _ _ _ = Nothing
 
         f xy = case s !? xy of
