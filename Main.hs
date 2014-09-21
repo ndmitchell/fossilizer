@@ -17,16 +17,9 @@ main = do
     writeFile "output/models/set1/set1.obj" $ convert src
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     writeFile "output/models/set1/responses.txt" $ unlines
-        ["set1.obj"
-        ,"0"
-        ,"1"
-        ,"surf"
-        ,"surf"
-        ,"set1"
-        ,"1"
-        ,"1"
-        ,"1"
-        ,"1"
+        ["set1.obj","0","1"
+        ,"surf","surf","set1"
+        ,"1","1","1","1"
         ]
     () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\part_grouping.py < responses.txt"
     () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\make_viewer_metadata.py"
