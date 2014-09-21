@@ -2,7 +2,7 @@
 
 module Surface(
     Surface, X, Y,
-    fromList, (!), (!?), points, ffmap
+    fromList, toList, (!), (!?), points, ffmap
     ) where
 
 import Data.Array hiding ((!))
@@ -29,6 +29,8 @@ fromList vs = Surface $ array
         xs = f [x | (x,_,_) <- vs]
         ys = f [y | (_,y,_) <- vs]
 
+toList :: Surface x -> [x]
+toList (Surface xs) = elems xs
 
 (!) :: Surface a -> (X,Y) -> a
 (!) (Surface xs) i = xs A.! i

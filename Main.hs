@@ -7,6 +7,7 @@ import System.Directory
 import Util
 import OBJ
 import Surface
+import Data.Maybe
 
 
 main :: IO ()
@@ -45,13 +46,20 @@ readFileSurface file = do
 
 
 convert :: Surface (Double, Double, Maybe Double) -> [Face]
-convert s = concat
-    [ triangle (x,y) (pred x,y) (x,pred y) ++
-      triangle (x,y) (succ x,y) (x,succ y)
-    | (x,y) <- points s]
+convert = collect . faces
+
+
+collect :: Surface (Maybe a, Maybe a) -> [a]
+collect s = concat [maybeToList a ++ maybeToList b | (a,b) <- toList s]
+
+
+faces :: Surface (Double, Double, Maybe Double) -> Surface (Maybe Face, Maybe Face)
+faces s = flip ffmap s $ \x y _ ->
+    (triangle (x,y) (pred x,y) (x,pred y)
+    ,triangle (x,y) (succ x,y) (x,succ y))
     where
-        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = [Face [v1, v2, v3] $ Just $ normal v1 v2 v3]
-        triangle _ _ _ = []
+        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = Just $ Face [v1, v2, v3] $ Just $ normal v1 v2 v3
+        triangle _ _ _ = Nothing
 
         f xy = case s !? xy of
             Just (x,y,Just z) -> Just $ Vertex x y z
