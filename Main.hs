@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, ViewPatterns #-}
 
 module Main(main) where
 
@@ -6,15 +6,18 @@ import Development.Shake.Command
 import System.Directory
 import Util
 import OBJ
+import Surface
 
 
 main :: IO ()
 main = do
     copyDirectory "web" "output"
     copyDirectory "data/set1" "output/models/set1"
-    src <- readFile "data/set1/surface.txt"
     copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
-    writeFile "output/models/set1/set1.obj" $ convert src
+    src <- readFileSurface "data/set1/surface.txt"
+    writeFile "output/models/set1/set1.obj" $ unlines $
+        ["mtllib materials.mtl","usemtl mtlsurface","g surface"] ++
+        showOBJ (convert src)
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     writeFile "output/models/set1/responses.txt" $ unlines
         ["set1.obj","0","1"
@@ -35,25 +38,21 @@ main = do
     return ()
 
 
-convert lst = unlines $
-    ["mtllib materials.mtl","usemtl mtlsurface","g surface"] ++
-    showOBJ (concat
-        [[Face [snd o , snd x, snd y] (Just $ normal (snd o)  (snd x) (snd y))
-         ,Face [snd xy, snd y, snd x] (Just $ normal (snd xy) (snd y) (snd x))]
-        | (i, (o, x, y, xy)) <- tri])
+readFileSurface :: FilePath -> IO (Surface (Double, Double, Maybe Double))
+readFileSurface file = do
+    src <- readFile file
+    return $ Surface.fromList [(x,y,z) | item <- lines src, let [x,y,z] = map read $ words item]
+
+
+convert :: Surface (Double, Double, Maybe Double) -> [Face]
+convert s = concat
+    [ triangle (x,y) (pred x,y) (x,pred y) ++
+      triangle (x,y) (succ x,y) (x,succ y)
+    | (x,y) <- points s]
     where
-        rpts = reverse pts
-        pts = [Vertex x y z | item <- lines lst, let [x,y,z] = map read $ words item, not $ isNaN z]
+        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = [Face [v1, v2, v3] $ Just $ normal v1 v2 v3]
+        triangle _ _ _ = []
 
-        tri = zip [0..] [((i, o), x, y, xy)
-            | (i,o) <- zip [0..] pts
-            , Just x  <- [findIndexValue (\x -> getX x >  getX o && getY x == getY o) pts]
-            , Just y  <- [findIndexValue (\y -> getX y == getX o && getY y >  getY o) pts]
-            , Just xy <- [findIndexValue (\xy -> getX (snd x) == getX xy && getY (snd y) == getY xy) pts]
-            ]
-
-getX Vertex{..} = x
-getY Vertex{..} = y
-getZ Vertex{..} = z
-
-
+        f xy = case s !? xy of
+            Just (x,y,Just z) -> Just $ Vertex x y z
+            _ -> Nothing
