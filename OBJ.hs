@@ -1,6 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module OBJ(Vertex(..), Vector, normal, Face(..), showOBJ) where
+module OBJ(
+    Vertex(..), Vector,
+    Face(..), showOBJ,
+    normal, unit, follow
+    ) where
 
 import Numeric
 import qualified Data.Map as Map
@@ -51,3 +55,18 @@ normal (Vertex x1 y1 z1) (Vertex x2 y2 z2) (Vertex x3 y3 z3) = Vertex
     ((y2-y1)*(z3-z1) - (y3-y1)*(z2-z1))
     ((z2-z1)*(x3-x1) - (x2-x1)*(z3-z1))
     ((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+
+
+len :: Vertex -> Double
+len (Vertex x y z) = sqrt (sqr x + sqr y + sqr z)
+    where sqr v = v * v
+
+unit :: Vertex -> Vertex
+unit v@Vertex{..}
+    | n == 0 = v
+    | otherwise = Vertex (x*n) (y*n) (z*n)
+    where n = len v
+
+
+follow :: [Vertex] -> Vertex
+follow vs = Vertex (sum $ map x vs) (sum $ map y vs) (sum $ map z vs)
