@@ -1,0 +1,4 @@
+Originally from https://groups.google.com/d/msg/open-3d-viewer-discuss/MqfP16EqFwg/cAd0DGNt_K0J
+
+From author "spirit" on message "Concern about how to split the 3D-Model" on the "open-3d-viewer-discuss" Google Groups. No explicit license, but appears to be from https://code.google.com/p/webgl-loader/. Apache License 2.0.
+
