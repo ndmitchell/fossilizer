@@ -7,7 +7,9 @@ import System.Directory
 import Util
 import OBJ
 import Surface
+import Data.Function
 import Data.Maybe
+import Data.List
 import Control.Monad
 
 
@@ -16,10 +18,12 @@ main = do
     copyDirectory "web" "output"
     copyDirectory "data/set1" "output/models/set1"
     copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
-    src <- readFileSurface "data/set1/surface.txt"
+    surface <- readFileSurface "data/set1/surface.txt"
+    points <- readFilePoints "data/set1/points.txt"
     writeFile "output/models/set1/set1.obj" $ unlines $ showOBJ $
-        [MaterialFile "materials.mtl",Material "mtlsurface",Group "surface"] ++
-        convert src
+        [MaterialFile "materials.mtl"] ++
+        convertSurface surface ++
+        concatMap convertPoints points
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     writeFile "output/models/set1/responses.txt" $ unlines
         ["set1.obj","0","1"
@@ -45,9 +49,25 @@ readFileSurface file = do
     src <- readFile file
     return $ Surface.fromList [(x,y,z) | item <- lines src, let [x,y,z] = map read $ words item]
 
+readFilePoints :: FilePath -> IO [(String, [Vertex])]
+readFilePoints file = do
+    src <- readFile file
+    return $ map (\x -> (fst $ head x, map snd x)) $
+        groupBy ((==) `on` fst) $ sortBy (compare `on` fst)
+        [(s,Vertex (read x) (read y) (read z)) | item <- lines src, let [x,y,z,s] = words item]
 
-convert :: Surface (Double, Double, Maybe Double) -> [OBJ]
-convert s = collect $ faces (allNormals s) s
+
+convertPoints :: (String,[Vertex]) -> [OBJ]
+convertPoints (s,xyz) =
+    [Material $ "mtl" ++ s] ++
+    [Face [Vertex x y z, Vertex (x+d) y z, Vertex x (y+d) z] [] | Vertex{..} <- xyz]
+    where d = 0.1
+
+
+convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
+convertSurface s =
+    [Material "mtlsurface",Group "surface"] ++
+    collect (faces (allNormals s) s)
 
 
 collect :: Surface (Maybe a, Maybe a) -> [a]
