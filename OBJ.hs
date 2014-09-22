@@ -2,7 +2,7 @@
 
 module OBJ(
     Vertex(..), size, unit, normal,
-    Face(..), showOBJ
+    OBJ(..), showOBJ
     ) where
 
 import Numeric
@@ -59,20 +59,26 @@ unit v | n == 0 = v
 ---------------------------------------------------------------------
 -- OBJ LIBRARY
 
-data Face = Face {verticies :: [Vertex], normals :: [Vertex]}
+data OBJ = Face {verticies :: [Vertex], normals :: [Vertex]}
+         | MaterialFile FilePath
+         | Material String
+         | Group String
 
 data S = S {vs :: Map.Map Vertex Int, vns :: Map.Map Vertex Int}
 
-showOBJ :: [Face] -> [String]
-showOBJ = showFaces $ S Map.empty Map.empty
+showOBJ :: [OBJ] -> [String]
+showOBJ = showMany $ S Map.empty Map.empty
     where
-        showFaces s [] = []
-        showFaces s (f:fs) = showFace s f $ \s -> showFaces s fs
+        showMany s [] = []
+        showMany s (f:fs) = showOne s f $ \s -> showMany s fs
 
-        showFace s Face{..} k =
+        showOne s Face{..} k =
             showList showVertex s verticies $ \s ps ->
             showList showNormal s normals $ \s ns ->
             (unwords $ "f" : zipWith (++) ps (ns ++ repeat "")) : k s
+        showOne s (MaterialFile x) k = ("mtllib " ++ x) : k s
+        showOne s (Material x) k = ("usemtl " ++ x) : k s
+        showOne s (Group x) k = ("g " ++ x) : k s
 
         showList showOne s [] k = k s []
         showList showOne s (p:ps) k = showOne s p $ \s i -> showList showOne s ps $ \s is -> k s (i:is)

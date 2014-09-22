@@ -17,9 +17,9 @@ main = do
     copyDirectory "data/set1" "output/models/set1"
     copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
     src <- readFileSurface "data/set1/surface.txt"
-    writeFile "output/models/set1/set1.obj" $ unlines $
-        ["mtllib materials.mtl","usemtl mtlsurface","g surface"] ++
-        showOBJ (convert src)
+    writeFile "output/models/set1/set1.obj" $ unlines $ showOBJ $
+        [MaterialFile "materials.mtl",Material "mtlsurface",Group "surface"] ++
+        convert src
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     writeFile "output/models/set1/responses.txt" $ unlines
         ["set1.obj","0","1"
@@ -46,7 +46,7 @@ readFileSurface file = do
     return $ Surface.fromList [(x,y,z) | item <- lines src, let [x,y,z] = map read $ words item]
 
 
-convert :: Surface (Double, Double, Maybe Double) -> [Face]
+convert :: Surface (Double, Double, Maybe Double) -> [OBJ]
 convert s = collect $ faces (allNormals s) s
 
 
@@ -54,7 +54,7 @@ collect :: Surface (Maybe a, Maybe a) -> [a]
 collect s = concat [maybeToList a ++ maybeToList b | (a,b) <- toList s]
 
 
-faces :: Surface Vertex -> Surface (Double, Double, Maybe Double) -> Surface (Maybe Face, Maybe Face)
+faces :: Surface Vertex -> Surface (Double, Double, Maybe Double) -> Surface (Maybe OBJ, Maybe OBJ)
 faces norms s = flip ffmap s $ \x y _ ->
     (triangle (x,y) (pred x,y) (x,pred y)
     ,triangle (x,y) (succ x,y) (x,succ y))
