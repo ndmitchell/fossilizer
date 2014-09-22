@@ -63,7 +63,7 @@ len (Vertex x y z) = sqrt (sqr x + sqr y + sqr z)
 unit :: Vertex -> Vertex
 unit v@Vertex{..}
     | n == 0 = v
-    | otherwise = Vertex (x*n) (y*n) (z*n)
+    | otherwise = Vertex (x/n) (y/n) (z/n)
     where n = len v
 
 
