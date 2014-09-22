@@ -8,6 +8,7 @@ import Util
 import OBJ
 import Surface
 import Data.Maybe
+import Control.Monad
 
 
 main :: IO ()
@@ -46,21 +47,37 @@ readFileSurface file = do
 
 
 convert :: Surface (Double, Double, Maybe Double) -> [Face]
-convert = collect . faces
+convert s = collect $ faces (allNormals s) s
 
 
 collect :: Surface (Maybe a, Maybe a) -> [a]
 collect s = concat [maybeToList a ++ maybeToList b | (a,b) <- toList s]
 
 
-faces :: Surface (Double, Double, Maybe Double) -> Surface (Maybe Face, Maybe Face)
-faces s = flip ffmap s $ \x y _ ->
+faces :: Surface Vertex -> Surface (Double, Double, Maybe Double) -> Surface (Maybe Face, Maybe Face)
+faces norms s = flip ffmap s $ \x y _ ->
     (triangle (x,y) (pred x,y) (x,pred y)
     ,triangle (x,y) (succ x,y) (x,succ y))
     where
-        triangle (f -> Just v1) (f -> Just v2) (f -> Just v3) = Just $ Face [v1, v2, v3] $ replicate 3 $ normal v1 v2 v3
+        triangle p1@(f -> Just v1) p2@(f -> Just v2) p3@(f -> Just v3) =
+            Just $ Face [v1, v2, v3] $ map (norms !) [p1,p2,p3]
         triangle _ _ _ = Nothing
 
         f xy = case s !? xy of
             Just (x,y,Just z) -> Just $ Vertex x y z
+            _ -> Nothing
+
+
+allNormals :: Surface (Double, Double, Maybe Double) -> Surface Vertex
+allNormals s = flip ffmap s $ \x y _ -> unit $ sum $ map unit $ mapMaybe g
+    [(x,y,pred x,y,x,pred y)
+    ,(x,y,x,pred y,succ x,y)
+    ,(x,y,succ x,y,x,succ y)
+    ,(x,y,x,succ y,pred x,y)
+    ]
+    where
+        g (x1,y1,x2,y2,x3,y3) = liftM3 normal (f (x1,y1)) (f (x2,y2)) (f (x3,y3))
+
+        f xy = case s !? xy of
+            Just (x,y,Just z) -> Just Vertex{..}
             _ -> Nothing
