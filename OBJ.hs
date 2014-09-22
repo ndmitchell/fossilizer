@@ -36,13 +36,13 @@ showOBJ = showFaces $ S Map.empty Map.empty
         showVertex s@S{..} v@Vertex{..} k
             | Just i <- Map.lookup v vs = k s $ show i
             | otherwise = let i = Map.size vs + 1 in
-                          (unwords ["v",shw x,shw y,shw z]) :
+                          (unwords ["v",shw x,shw y,shw z,'#':show i]) :
                           k s{vs = Map.insert v i vs} (show i)
 
         showNormal s@S{..} vn@Vertex{..} k
             | Just i <- Map.lookup vn vns = k s $ "//" ++ show i
             | otherwise = let i = Map.size vns + 1 in
-                          (unwords ["vn",shw x,shw y,shw z]) :
+                          (unwords ["vn",shw x,shw y,shw z, '#':show i]) :
                           k s{vns = Map.insert vn i vns} ("//" ++ show i)
 
 
