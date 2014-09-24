@@ -36,7 +36,7 @@ o3v.navUI = function(reset, move, zoom) {
   };
 
   this.navHome = $('<div>').appendTo('body').css(navBtnStyles).css({
-      'left': '30px',
+      'right': '30px',
       'top': '84px'
     }).button({
      icons: {
