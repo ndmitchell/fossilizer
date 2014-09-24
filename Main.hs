@@ -33,11 +33,14 @@ main = do
     putChar '.'
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     putStrLn ".\n"
-    writeFile "output/models/set1/responses.txt" $ unlines
-        ["set1.obj","0","1"
-        ,"surf","surf","set1"
-        ,"1","1","1","1"
-        ]
+    let items = "surf" : map fst points
+    let n = length items
+    writeFile "output/models/set1/responses.txt" $ unlines $
+        ["set1.obj","0",show n] ++
+        concatMap (replicate 2) items ++
+        ["set1"] ++
+        map show [1..n] ++
+        concat [map show [i,1,i] | i <- [1..n]]
     () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\part_grouping.py < responses.txt"
     () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\make_viewer_metadata.py"
     writeFile "output/scripts/models.js" $ unlines
@@ -46,7 +49,7 @@ main = do
         ,"  scriptName:'set1.js',"
         ,"  modelPath:'models/set1/',"
         ,"  metadataFile:'entity_metadata.json',"
-        ,"  numLayers:1"
+        ,"  numLayers:" ++ show n
         ,"}];"
         ]
     return ()
@@ -67,7 +70,7 @@ readFilePoints file = do
 
 convertPoints :: [OBJ] -> (String,[Vertex]) -> [OBJ]
 convertPoints obj (s,xyz) =
-    [Material $ "mtl" ++ s] ++
+    [Material $ "mtl" ++ s,Group s] ++
     [Face (map ((+v) . (*0.05)) vs) vns | v <- xyz, Face vs vns <- obj]
 
 
