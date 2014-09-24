@@ -1,2 +1,9 @@
 :set -fno-warn-overlapping-patterns -fwarn-unused-binds -fwarn-unused-imports
 :load Main
+
+:{
+:def go const $ return $
+        ":!" ++
+        "ghc -O2 --make Main.hs -w -outputdir .make -o .make/fossilizer.exe && " ++
+        ".make\\fossilizer"
+:}
