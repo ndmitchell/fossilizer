@@ -99,6 +99,10 @@ showOBJ = showMany $ S Map.empty Map.empty
 
 
 shw x = showFFloat Nothing x ""
+-- alternative much faster definition (x4 faster)
+-- import qualified Data.Double.Conversion.Text as Text
+-- import qualified Data.Text as Text
+-- shw = Text.unpack . Text.toShortest
 
 
 readOBJ :: [String] -> [OBJ]
