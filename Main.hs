@@ -20,34 +20,36 @@ main = do
     hSetBuffering stdout NoBuffering
     putChar '.'
     copyDirectory "web" "output"
-    copyDirectory "data/set1" "output/models/set1"
-    copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
-    surface <- readFileSurface "data/set1/surface.txt"
-    points <- readFilePoints "data/set1/points.txt"
+    copyDirectory "data/e" "output/models/e"
+    copyFile "data/materials.mtl" "output/models/e/materials.mtl"
+    surface <- readFileSurface "data/e/surface.txt"
+    points <- readFilePoints "data/e/points.txt"
+    groups <- (("surf",["surface"]):) <$> readFileGroups "data/e/groups.txt"
     sphere <- readOBJ . lines <$> readFile "data/sphere.obj"
     putChar '.'
-    writeFile "output/models/set1/set1.obj" $ unlines $ showOBJ $
+    writeFile "output/models/e/e.obj" $ unlines $ showOBJ $
         [MaterialFile "materials.mtl"] ++
         convertSurface surface ++
         concatMap (convertPoints sphere) points
     putChar '.'
-    () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
+    () <- cmd (Cwd "output/models/e") Shell "..\\..\\..\\bin\\objcompress e.obj e.utf8 > e.js"
     putStrLn ".\n"
-    let items = "surf" : map fst points
-    let n = length items
-    writeFile "output/models/set1/responses.txt" $ unlines $
-        ["set1.obj","0",show n] ++
-        concatMap (replicate 2) items ++
-        ["set1"] ++
+    let n = length groups
+    writeFile "output/models/e/responses.txt" $ unlines $
+        ["e.obj","0",show n] ++
+        concatMap (replicate 2 . fst) groups ++
+        ["e"] ++
         map show [1..n] ++
-        concat [map show [i,1,i] | i <- [1..n]]
-    () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\part_grouping.py < responses.txt"
-    () <- cmd (Cwd "output/models/set1") Shell "py ..\\..\\..\\bin\\make_viewer_metadata.py"
+        concat [ map show $ i : length vs : map (succ . fromJust . flip elemIndex lst) vs
+               | let lst = ("surface":map fst points)
+               , (i,(_,vs)) <- zip [1..n] groups]
+    () <- cmd (Cwd "output/models/e") Shell "py ..\\..\\..\\bin\\part_grouping.py < responses.txt"
+    () <- cmd (Cwd "output/models/e") Shell "py ..\\..\\..\\bin\\make_viewer_metadata.py"
     writeFile "output/scripts/models.js" $ unlines
         ["o3v.MODELS = [{"
-        ,"  name:'set1.obj',"
-        ,"  scriptName:'set1.js',"
-        ,"  modelPath:'models/set1/',"
+        ,"  name:'e.obj',"
+        ,"  scriptName:'e.js',"
+        ,"  modelPath:'models/e/',"
         ,"  metadataFile:'entity_metadata.json',"
         ,"  numLayers:" ++ show n
         ,"}];"
@@ -67,18 +69,27 @@ readFilePoints file = do
         groupBy ((==) `on` fst) $ sortBy (compare `on` fst)
         [(s,Vertex (read x) (read y) (read z)) | item <- lines src, let [x,y,z,s] = words item]
 
+readFileGroups :: FilePath -> IO [(String, [String])]
+readFileGroups file = do
+    src <- readFile file
+    return [(x,xs) | x:xs <- map words $ lines src]
+
 
 convertPoints :: [OBJ] -> (String,[Vertex]) -> [OBJ]
 convertPoints obj (s,xyz) =
     [Material $ "mtl" ++ s,Group s] ++
-    [Face (map ((+v) . (*0.05)) vs) vns | v <- xyz, Face vs vns <- obj]
+    [Face (map ((+v) . (*0.03)) vs) vns | v <- xyz, Face vs vns <- obj]
 
 
 convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
 convertSurface s =
-    [Material "mtlsurface",Group "surface"] ++
-    collect (faces (allNormals s) s)
+    [Group "surface",Material "mtlFRONT"] ++
+    xs ++ Material "mtlBACK" : map mirror xs
+    where xs = collect (faces (allNormals s) s)
 
+mirror :: OBJ -> OBJ
+mirror (Face vs ns) = Face (reverse vs) (map negate ns)
+mirror x = x
 
 collect :: Surface (Maybe a, Maybe a) -> [a]
 collect s = concat [maybeToList a ++ maybeToList b | (a,b) <- toList s]
