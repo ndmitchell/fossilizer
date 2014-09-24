@@ -10,6 +10,7 @@ import Surface
 import Data.Function
 import Data.Maybe
 import Data.List
+import Control.Applicative
 import Control.Monad
 
 
@@ -20,10 +21,11 @@ main = do
     copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
     surface <- readFileSurface "data/set1/surface.txt"
     points <- readFilePoints "data/set1/points.txt"
+    sphere <- readOBJ . lines <$> readFile "data/sphere.obj"
     writeFile "output/models/set1/set1.obj" $ unlines $ showOBJ $
         [MaterialFile "materials.mtl"] ++
         convertSurface surface ++
-        concatMap convertPoints points
+        concatMap (convertPoints sphere) points
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
     writeFile "output/models/set1/responses.txt" $ unlines
         ["set1.obj","0","1"
@@ -57,11 +59,10 @@ readFilePoints file = do
         [(s,Vertex (read x) (read y) (read z)) | item <- lines src, let [x,y,z,s] = words item]
 
 
-convertPoints :: (String,[Vertex]) -> [OBJ]
-convertPoints (s,xyz) =
+convertPoints :: [OBJ] -> (String,[Vertex]) -> [OBJ]
+convertPoints obj (s,xyz) =
     [Material $ "mtl" ++ s] ++
-    [Face [Vertex x y z, Vertex (x+d) y z, Vertex x (y+d) z] [] | Vertex{..} <- xyz]
-    where d = 0.1
+    [Face (map ((+v) . (*0.05)) vs) vns | v <- xyz, Face vs vns <- obj]
 
 
 convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
