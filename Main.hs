@@ -12,21 +12,27 @@ import Data.Maybe
 import Data.List
 import Control.Applicative
 import Control.Monad
+import System.IO
 
 
 main :: IO ()
 main = do
+    hSetBuffering stdout NoBuffering
+    putChar '.'
     copyDirectory "web" "output"
     copyDirectory "data/set1" "output/models/set1"
     copyFile "data/materials.mtl" "output/models/set1/materials.mtl"
     surface <- readFileSurface "data/set1/surface.txt"
     points <- readFilePoints "data/set1/points.txt"
     sphere <- readOBJ . lines <$> readFile "data/sphere.obj"
+    putChar '.'
     writeFile "output/models/set1/set1.obj" $ unlines $ showOBJ $
         [MaterialFile "materials.mtl"] ++
         convertSurface surface ++
         concatMap (convertPoints sphere) points
+    putChar '.'
     () <- cmd (Cwd "output/models/set1") Shell "..\\..\\..\\bin\\objcompress set1.obj set1.utf8 > set1.js"
+    putStrLn ".\n"
     writeFile "output/models/set1/responses.txt" $ unlines
         ["set1.obj","0","1"
         ,"surf","surf","set1"
