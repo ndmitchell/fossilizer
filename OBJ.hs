@@ -1,12 +1,14 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, ViewPatterns #-}
 
 module OBJ(
     Vertex(..), size, unit, normal,
-    OBJ(..), showOBJ
+    OBJ(..), showOBJ, readOBJ
     ) where
 
 import Numeric
+import Control.Arrow
 import qualified Data.Map as Map
+import Data.Maybe
 
 
 ---------------------------------------------------------------------
@@ -99,3 +101,20 @@ showOBJ = showMany $ S Map.empty Map.empty
 shw x = showFFloat Nothing x ""
 
 
+readOBJ :: [String] -> [OBJ]
+readOBJ = f (Map.empty, Map.empty)
+    where
+        f s ((words -> x):xs)
+            | "v":x <- x = f (first (addVertex x) s) xs
+            | "vn":x <- x = f (second (addVertex x) s) xs
+            | "f":x <- x = let ps = map (asPoint s) x
+                           in Face (map fst ps) (mapMaybe snd ps) : f s xs
+            | ('#':_):_ <- x = f s xs
+            | [] <- x = f s xs
+            | otherwise = error $ "Can't parse OBJ line: " ++ unwords x
+        f s [] = []
+
+        addVertex (map read -> [x,y,z]) mp = Map.insert (Map.size mp + 1) Vertex{..} mp
+
+        asPoint (vs, vns) (break (== '/') -> (a,dropWhile (== '/') -> b)) =
+            (vs Map.! read a, if null b then Nothing else Just $ vns Map.! read b)
