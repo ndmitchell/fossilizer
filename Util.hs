@@ -39,3 +39,6 @@ partitionM f (x:xs) = do
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 concatMapM f = liftM concat . mapM f
 
+fst3 (x,y,z) = x
+snd3 (x,y,z) = y
+thd3 (x,y,z) = z
