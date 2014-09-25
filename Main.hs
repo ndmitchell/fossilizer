@@ -14,6 +14,7 @@ import Data.List
 import Control.Applicative
 import Control.Monad
 import System.IO
+import System.Directory
 import System.FilePath
 import Control.Arrow
 
@@ -30,6 +31,7 @@ main = do
         let name = takeFileName dir
 
         -- generate the static data
+        createDirectoryIfMissing True $ "output/models" </> name
         writeFile ("output/models" </> name </> name <.> "mtl") $ unlines $ concat
             [ let f x = show (fromInteger (toInteger x) / 255.0 :: Double) in
               ["newmtl mtl" ++ name, unwords $ "Kd" : [f r, f g, f b]]
@@ -37,9 +39,36 @@ main = do
                                 map (second fslColor) fossils]
         copyDirectory dir ("output/models" </> name)
 
-        -- generate the obj files
+        -- read data and validate
+        putChar '.'
         surface <- readFileSurface $ dir </> "surface.txt"
         points <- readFilePoints $ dir </> "points.txt"
+
+        {-
+        -- automatic surface generation
+        let diff = 0.3
+        let range = [0,diff .. 10]
+        list <- return
+            [ (xpos, ypos, 0)
+            | ypos <- range, let ymin = ypos - diff, let ymax = ypos + diff
+            , let ps = map x $ filter (\Vertex{..} -> y >= ymin && y <= ymax) $ map pointPos $ concatMap snd points
+            , let xmin = if null ps then 0 else minimum ps - diff
+            , let xmax = if null ps then 0 else maximum ps + diff
+            , xpos <- range
+            , xpos >= xmin && xpos <= xmax
+            ]
+        writeFile (dir </> "surface.txt") $ unlines
+            [unwords [show x, show y, show z] | (x,y,z) <- list]
+        -}
+
+        let assertNoDupes xs = when (nub xs /= xs) $
+                error $ "List must not contain duplicates: " ++ show xs
+        let assertSubset xs ys = when (xs \\ ys /= []) $
+                error $ "Expected subset: " ++ show xs ++ " vs " ++ show ys
+        assertNoDupes $ map fst fossils
+        map fst points `assertSubset` map fst fossils
+
+        -- generate the obj files
         putChar '.'
         writeFile ("output/models" </> name </> name <.> "obj") $ unlines $ showOBJ $
             [MaterialFile $ name <.> "mtl"] ++
@@ -49,14 +78,6 @@ main = do
         () <- cmd (Cwd $ "output/models" </> name) Shell $
             "..\\..\\..\\bin\\objcompress " ++ name ++ ".obj " ++ name ++ ".utf8 > " ++ name ++ ".js"
         putStrLn ".\n"
-
-        -- do assertions about metadata/values
-        let assertNoDupes xs = when (nub xs /= xs) $
-                error $ "List must not contain duplicates: " ++ show xs
-        let assertSubset xs ys = when (xs \\ ys /= []) $
-                error $ "Expected subset: " ++ show xs ++ " vs " ++ show ys
-        assertNoDupes $ map fst fossils
-        map fst points `assertSubset` map fst fossils
 
         -- generate the grouping information
         let grp = Grouping
@@ -92,18 +113,34 @@ readFileSurface file = do
     src <- readFile file
     return $ Surface.fromList [(x,y,z) | item <- lines src, let [x,y,z] = map read $ words item]
 
-readFilePoints :: FilePath -> IO [(String, [Vertex])]
+data Point = Point {pointPos :: Vertex, pointSize :: Vertex, pointAngle :: Double}
+
+readFilePoints :: FilePath -> IO [(String, [Point])]
 readFilePoints file = do
     src <- readFile file
     return $ map (\x -> (fst $ head x, map snd x)) $
         groupBy ((==) `on` fst) $ sortBy (compare `on` fst)
-        [(s,Vertex (read x) (read y) (read z)) | item <- lines src, let [x,y,z,s] = words item]
+        [ (s,Point (Vertex x y z) (Vertex sx sy sz) a)
+        | item <- lines src, let s:(map read -> [x,y,z,sx,sy,sz,a]) = words item]
 
 
-convertPoints :: [OBJ] -> (String,[Vertex]) -> [OBJ]
+convertPoints :: [OBJ] -> (String,[Point]) -> [OBJ]
 convertPoints obj (s,xyz) =
     [Material $ "mtl" ++ s,Group s] ++
-    [Face (map ((+v) . (*0.03)) vs) vns | v <- xyz, Face vs vns <- obj]
+    [move pointPos $ rotate pointAngle $ resize pointSize o | Point{..} <- xyz, o <- obj]
+
+resize :: Vertex -> OBJ -> OBJ
+resize v (Face vs vns) = Face (map (*v) vs) vns
+resize v o = o
+
+rotate :: Double -> OBJ -> OBJ
+rotate a (Face vs vns) = Face (map f vs) (map f vns)
+    where f Vertex{..} = Vertex (x * cos a - y * sin a) (x * sin a + y * cos a) z
+rotate a o = o
+
+move :: Vertex -> OBJ -> OBJ
+move v (Face vs vns) = Face (map (+v) vs) vns
+move v o = o
 
 
 convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
