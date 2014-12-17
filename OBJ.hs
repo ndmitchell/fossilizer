@@ -2,7 +2,8 @@
 
 module OBJ(
     Vertex(..), size, unit, normal,
-    OBJ(..), showOBJ, readOBJ
+    OBJ(..), showOBJ, readOBJ,
+    isGroup, isMaterial
     ) where
 
 import Numeric
@@ -65,6 +66,16 @@ data OBJ = Face {verticies :: [Vertex], normals :: [Vertex]}
          | MaterialFile FilePath
          | Material String
          | Group String
+           deriving Eq
+
+isMaterial :: OBJ -> Bool
+isMaterial Material{} = True
+isMaterial _ = False
+
+isGroup :: OBJ -> Bool
+isGroup Group{} = True
+isGroup _ = False
+
 
 data S = S {vs :: Map.Map Vertex Int, vns :: Map.Map Vertex Int}
 
