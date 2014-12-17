@@ -25,7 +25,7 @@ main = do
     copyDirectory "web" "output"
 
     let Metadata{..} = metadata
-    sphere <- readOBJ . lines <$> readFile "data/sphere.obj"
+    sphere <- map (resize 2) . readOBJ . lines <$> readFile "data/tetrahedron.obj"
     mdls <- forM datasets $ \dir -> do
         putStr $ "Processing " ++ dir ++ " "
         let name = takeFileName dir
