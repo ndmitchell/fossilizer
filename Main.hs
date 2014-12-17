@@ -70,10 +70,14 @@ main = do
 
         -- generate the obj files
         putChar '.'
+        let xs = convertSurface surface ++ concatMap (convertPoints sphere) points
         writeFile ("output/models" </> name </> name <.> "obj") $ unlines $ showOBJ $
-            [MaterialFile $ name <.> "mtl"] ++
-            convertSurface surface ++
-            concatMap (convertPoints sphere) points
+            [MaterialFile $ name <.> "mtl"] ++ xs
+        let (mn,mx) = bounds xs
+        forM (grouped $ map (move $ negate $ (mn+mx) / 2) xs) $ \(name2,xs) -> do
+            let name3 = if name2 == "SURFACE" then "Surface" else fslName $ fromJust $ lookup name2 fossils
+            writeFile ("output/models" </> name </> name3 <.> "obj") $ unlines $ showOBJ $
+                [MaterialFile $ name <.> "mtl"] ++ takeWhile (/= Material "mtlSURFACE_BACK") xs
         putChar '.'
         () <- cmd (Cwd $ "output/models" </> name) Shell $
             "..\\..\\..\\bin\\objcompress " ++ name ++ ".obj " ++ name ++ ".utf8 > " ++ name ++ ".js"
@@ -141,6 +145,19 @@ rotate a o = o
 move :: Vertex -> OBJ -> OBJ
 move v (Face vs vns) = Face (map (+v) vs) vns
 move v o = o
+
+bounds :: [OBJ] -> (Vertex, Vertex)
+bounds obj | null vs = (0, 0)
+           | otherwise = (f minimum, f maximum)
+    where vs = [v | Face vs _ <- obj, v <- vs]
+          f mi = Vertex (mi $ map x vs) (mi $ map y vs) (mi $ map z vs)
+
+
+grouped :: [OBJ] -> [(String, [OBJ])]
+grouped (Group x:xs) = (x, a) : grouped b
+    where (a,b) = break isGroup xs
+grouped (x:xs) = grouped xs
+grouped [] = []
 
 
 convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
