@@ -126,7 +126,7 @@ readFilePoints file = do
 
 convertPoints :: [OBJ] -> (String,[Point]) -> [OBJ]
 convertPoints obj (s,xyz) =
-    [Material $ "mtl" ++ s,Group s] ++
+    [Group s,Material $ "mtl" ++ s] ++
     [move pointPos $ rotate pointAngle $ resize pointSize o | Point{..} <- xyz, o <- obj]
 
 resize :: Vertex -> OBJ -> OBJ
@@ -145,8 +145,8 @@ move v o = o
 
 convertSurface :: Surface (Double, Double, Maybe Double) -> [OBJ]
 convertSurface s =
-    [Group "SURFACE",Material "mtlSURFACE_FRONT"] ++
-    xs ++ Material "mtlSURFACE_BACK" : map mirror xs
+    [Group "SURFACE",Material "mtlSURFACE_FRONT"] ++ xs ++
+    Material "mtlSURFACE_BACK" : map mirror xs
     where xs = collect (faces (allNormals s) s)
 
 mirror :: OBJ -> OBJ
